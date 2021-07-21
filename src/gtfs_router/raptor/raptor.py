@@ -6,7 +6,7 @@ import pandas as pd
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-logging.debug('test')
+logging.debug('tests')
 
 
 class StopAccessState:
@@ -62,8 +62,10 @@ class StopAccessState:
 
         if did_update:
             if not k is None:
-                self._stops[stop_id]['trip_path'][k] = trip_id if k % 2 == 0 else 'walk transfer'
-                self._stops[stop_id]['stop_path'][k] = preceding_stop
+                self._stops[stop_id]['prior_segment'] = {'segment_num': k,
+                                                         'trip_id': trip_id if k % 2 == 0 else 'walk transfer',
+                                                         'from_stop_id': preceding_stop
+                                                         }
 
             # override if a preceding path is provided
             if preceding_path:
@@ -84,19 +86,21 @@ class StopAccessState:
 
         current_stop_id = to_stop_id
         current_stop = self.get_stop(to_stop_id)
-        max_to_trip = max(list(current_stop['stop_path'].keys()))
+        max_segment_num = current_stop['prior_segment']['segment_num']
 
         out_messages = {}
+        prior_stop_id = None
 
-        for x in range(max_to_trip, -1, -1):
-            prior_stop_id = current_stop['stop_path'][x]
+        for x in range(max_segment_num, -1, -1):
+            if current_stop['prior_segment']['segment_num'] != x:
+                continue
+
+            prior_stop_id = current_stop['prior_segment']['from_stop_id']
             prior_stop = self.get_stop(prior_stop_id)
             current_stop_name = stops[stops['stop_id'] == current_stop_id]['stop_name'].values[0]
             prior_stop_name = stops[stops['stop_id'] == prior_stop_id]['stop_name'].values[0]
 
-            current_trip_id = current_stop['trip_path'][x]
-
-            route_name = None
+            current_trip_id = current_stop['prior_segment']['trip_id']
 
             if current_trip_id != 'walk transfer':
                 route_id = trips[trips['trip_id'] == current_trip_id]['route_id']
@@ -126,7 +130,13 @@ class StopAccessState:
             current_stop = prior_stop
             current_stop_id = prior_stop_id
 
-        return out_messages
+        counter = 1
+        sorted_messages = {}
+        for i in sorted(list(out_messages.keys())):
+            sorted_messages[counter] = out_messages[i]
+            counter = counter + 1
+
+        return sorted_messages
 
     @staticmethod
     def _format_time(seconds: float)->str:
@@ -230,6 +240,10 @@ def _add_footpath_transfers(
 
     stop_xfers = transfers[(transfers['from_stop_id'].isin(stop_ids)) &
                            (~transfers['from_stop_id'].isin(already_processed_stops))].copy()
+
+    # No transfer from the stops
+    if stop_xfers.empty:
+        return updated_stop_ids
 
     ref_stop_state = [{'from_stop_id': stop_id, 'time_to_reach': vals['time_to_reach'], 'preceding': vals['preceding']}
                       for stop_id, vals in stops_state._stops.items()]

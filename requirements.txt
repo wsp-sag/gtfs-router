@@ -1,3 +1,5 @@
-geopandas
-pandas
+black
+isort
 partridge
+tox
+-e .
