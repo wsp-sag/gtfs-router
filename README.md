@@ -4,6 +4,12 @@ Collection of GTFS Pathbuilding Functions
 # DISCLAIMER
 This project is still a work in progress. The code has been tested on several GTFS feeds, but WSP USA makes no claims or warrants about the results of the algorithms contained in this repository. USE AT YOUR OWN RISK!
 
+# Install
+`pip install .`
+
+or and [editable install](https://packaging.python.org/guides/distributing-packages-using-setuptools/#id68)  
+`pip install -e .`
+
 # Examples
 The [examples](examples)  folder contains a sample setup to demonstrate how to use the router along with information about reporting results.
 
