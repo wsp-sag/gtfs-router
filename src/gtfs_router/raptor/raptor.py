@@ -6,7 +6,7 @@ import pandas as pd
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-logging.debug('tests')
+logging.debug("tests")
 
 
 class StopAccessState:
@@ -31,17 +31,20 @@ class StopAccessState:
         return {stop_id: self._stops[stop_id] for stop_id in stop_ids}
 
     def get_preceding_trips(self, stop_ids: List[str]):
-        return [(stop_id, preceding) for stop_id in stop_ids for preceding in self._stops[stop_id]['preceding']]
+        return [
+            (stop_id, preceding)
+            for stop_id in stop_ids
+            for preceding in self._stops[stop_id]["preceding"]
+        ]
 
     def try_add_update(
-            self,
-            stop_id: str,
-            time_to_reach: Union[int, float],
-            trip_id: Optional[str] = None,
-            preceding_stop: Optional[str] = None,
-            preceding_path: Optional[List[str]] = None,
-            k: Optional[int] = None,
-
+        self,
+        stop_id: str,
+        time_to_reach: Union[int, float],
+        trip_id: Optional[str] = None,
+        preceding_stop: Optional[str] = None,
+        preceding_path: Optional[List[str]] = None,
+        k: Optional[int] = None,
     ) -> bool:
         # initialize return object
         did_update = False
@@ -56,16 +59,17 @@ class StopAccessState:
                 "time_to_reach": time_to_reach,
                 "preceding": [trip_id] if trip_id else [],
                 "trip_path": {},
-                "stop_path": {}
+                "stop_path": {},
             }
             did_update = True
 
         if did_update:
             if not k is None:
-                self._stops[stop_id]['prior_segment'] = {'segment_num': k,
-                                                         'trip_id': trip_id if k % 2 == 0 else 'walk transfer',
-                                                         'from_stop_id': preceding_stop
-                                                         }
+                self._stops[stop_id]["prior_segment"] = {
+                    "segment_num": k,
+                    "trip_id": trip_id if k % 2 == 0 else "walk transfer",
+                    "from_stop_id": preceding_stop,
+                }
 
             # override if a preceding path is provided
             if preceding_path:
@@ -76,56 +80,85 @@ class StopAccessState:
                 if len(self._stops[stop_id]["preceding"]) == 0:
                     self._stops[stop_id]["preceding"] = [trip_id]
                 elif trip_id != self._stops[stop_id]["preceding"][-1]:
-                    self._stops[stop_id]["preceding"] = self._stops[stop_id]["preceding"].copy() + [trip_id]
+                    self._stops[stop_id]["preceding"] = self._stops[stop_id][
+                        "preceding"
+                    ].copy() + [trip_id]
 
         return did_update
 
-    def describe_path(self, to_stop_id: str, stops: pd.DataFrame,
-                      stop_times: pd.DataFrame,
-                      trips: pd.DataFrame, routes: pd.DataFrame) -> List[str]:
+    def describe_path(
+        self,
+        to_stop_id: str,
+        stops: pd.DataFrame,
+        stop_times: pd.DataFrame,
+        trips: pd.DataFrame,
+        routes: pd.DataFrame,
+    ) -> List[str]:
 
         current_stop_id = to_stop_id
         current_stop = self.get_stop(to_stop_id)
-        max_segment_num = current_stop['prior_segment']['segment_num']
+        max_segment_num = current_stop["prior_segment"]["segment_num"]
 
         out_messages = {}
         prior_stop_id = None
 
         for x in range(max_segment_num, -1, -1):
-            if current_stop['prior_segment']['segment_num'] != x:
+            if current_stop["prior_segment"]["segment_num"] != x:
                 continue
 
-            prior_stop_id = current_stop['prior_segment']['from_stop_id']
+            prior_stop_id = current_stop["prior_segment"]["from_stop_id"]
             prior_stop = self.get_stop(prior_stop_id)
-            current_stop_name = stops[stops['stop_id'] == current_stop_id]['stop_name'].values[0]
-            prior_stop_name = stops[stops['stop_id'] == prior_stop_id]['stop_name'].values[0]
+            current_stop_name = stops[stops["stop_id"] == current_stop_id][
+                "stop_name"
+            ].values[0]
+            prior_stop_name = stops[stops["stop_id"] == prior_stop_id][
+                "stop_name"
+            ].values[0]
 
-            current_trip_id = current_stop['prior_segment']['trip_id']
+            current_trip_id = current_stop["prior_segment"]["trip_id"]
 
-            if current_trip_id != 'walk transfer':
-                route_id = trips[trips['trip_id'] == current_trip_id]['route_id']
-                route_name = routes[routes['route_id'].isin(route_id)]['route_short_name'].values[0] + '-' + \
-                             routes[routes['route_id'].isin(route_id)]['route_long_name'].values[0]
+            if current_trip_id != "walk transfer":
+                route_id = trips[trips["trip_id"] == current_trip_id]["route_id"]
+                route_name = (
+                    routes[routes["route_id"].isin(route_id)][
+                        "route_short_name"
+                    ].values[0]
+                    + "-"
+                    + routes[routes["route_id"].isin(route_id)][
+                        "route_long_name"
+                    ].values[0]
+                )
 
-                boarding_time = stop_times[(stop_times['trip_id'] == current_trip_id) &
-                                           (stop_times['stop_id'] == prior_stop_id)]['departure_time'].values[0]
+                boarding_time = stop_times[
+                    (stop_times["trip_id"] == current_trip_id)
+                    & (stop_times["stop_id"] == prior_stop_id)
+                ]["departure_time"].values[0]
 
-                alight_time = stop_times[(stop_times['trip_id'] == current_trip_id) &
-                                           (stop_times['stop_id'] == current_stop_id)]['arrival_time'].values[0]
+                alight_time = stop_times[
+                    (stop_times["trip_id"] == current_trip_id)
+                    & (stop_times["stop_id"] == current_stop_id)
+                ]["arrival_time"].values[0]
 
-                out_messages[x] = 'Board {route_name} at {prior_stop_name}({prior_stop_id}) at {boarding_time} -> ' \
-                                  'Alight at {current_stop_name}({current_stop_id}) at {alight_time}'.format(
-                    route_name=route_name,
-                    prior_stop_name=prior_stop_name, prior_stop_id=prior_stop_id,
-                    boarding_time=StopAccessState._format_time(boarding_time),
-                    current_stop_name=current_stop_name, current_stop_id=current_stop_id,
-                    alight_time=StopAccessState._format_time(alight_time)
+                out_messages[x] = (
+                    "Board {route_name} at {prior_stop_name}({prior_stop_id}) at {boarding_time} -> "
+                    "Alight at {current_stop_name}({current_stop_id}) at {alight_time}".format(
+                        route_name=route_name,
+                        prior_stop_name=prior_stop_name,
+                        prior_stop_id=prior_stop_id,
+                        boarding_time=StopAccessState._format_time(boarding_time),
+                        current_stop_name=current_stop_name,
+                        current_stop_id=current_stop_id,
+                        alight_time=StopAccessState._format_time(alight_time),
                     )
-            else: # Walk connection
-                out_messages[x] = 'Walk from {}({}) to {}({})'.format(
-                    prior_stop_name, prior_stop_id,
-                    current_stop_name, current_stop_id,
-                    current_trip_id)
+                )
+            else:  # Walk connection
+                out_messages[x] = "Walk from {}({}) to {}({})".format(
+                    prior_stop_name,
+                    prior_stop_id,
+                    current_stop_name,
+                    current_stop_id,
+                    current_trip_id,
+                )
 
             current_stop = prior_stop
             current_stop_id = prior_stop_id
@@ -139,43 +172,49 @@ class StopAccessState:
         return sorted_messages
 
     @staticmethod
-    def _format_time(seconds: float)->str:
+    def _format_time(seconds: float) -> str:
         hours = seconds // 3600
         minutes = (seconds % 3600) // 60
         seconds = (seconds % 3600) % 60
 
-        return '{:02.0f}:{:02.0f}:{:02.0f}'.format(hours, minutes, seconds)
+        return "{:02.0f}:{:02.0f}:{:02.0f}".format(hours, minutes, seconds)
 
 
-def _get_trip_ids_for_stop_new(stop_times: pd.DataFrame, stop_ids: List[str], departure_time: int):
+def _get_trip_ids_for_stop_new(
+    stop_times: pd.DataFrame, stop_ids: List[str], departure_time: int
+):
     """Takes a stop and departure time and get associated trip ids."""
     mask_1 = stop_times.stop_id.isin(stop_ids)
     # mask_2 = stop_times.departure_time >= departure_time
     # mask_3 = stop_times.departure_time <= departure_time + 120 * 60
 
     # extract the list of qualifying trip ids
-    potential_trips = stop_times[mask_1][['trip_id', 'stop_id', 'departure_time', 'arrival_time', 'stop_sequence']].drop_duplicates()
+    potential_trips = stop_times[mask_1][
+        ["trip_id", "stop_id", "departure_time", "arrival_time", "stop_sequence"]
+    ].drop_duplicates()
     return potential_trips
 
 
 def _remove_prior_trips(potential_trips: pd.DataFrame, prior_trips: List[tuple]):
-    tuples_in_df = pd.MultiIndex.from_frame(potential_trips[['stop_id', 'trip_id']])
+    tuples_in_df = pd.MultiIndex.from_frame(potential_trips[["stop_id", "trip_id"]])
     return potential_trips[~tuples_in_df.isin(prior_trips)].copy()
 
 
 def _stop_times_for_kth_trip(
-        stops_state: StopAccessState,
-        last_updated_stops: List[str],
-        stop_times: pd.DataFrame,
-        departure_time: float,
-        k: int
+    stops_state: StopAccessState,
+    last_updated_stops: List[str],
+    stop_times: pd.DataFrame,
+    departure_time: float,
+    k: int,
 ) -> None:
     tic = time.perf_counter()
     # find all trips already related to these stop
     prior_trips = stops_state.get_preceding_trips(last_updated_stops)
 
     # find all qualifying potential trips with these stops
-    potential_trips = _get_trip_ids_for_stop_new(stop_times, last_updated_stops, departure_time)
+    potential_trips = _get_trip_ids_for_stop_new(
+        stop_times, last_updated_stops, departure_time
+    )
 
     if prior_trips:
         potential_trips = _remove_prior_trips(potential_trips, prior_trips)
@@ -190,27 +229,57 @@ def _stop_times_for_kth_trip(
 
     tic = time.perf_counter()
 
-    last_stop_evaluated = potential_trips.loc[potential_trips.groupby('trip_id')['arrival_time'].idxmax()]
-    last_stop_states = stops_state.get_stops(list(last_stop_evaluated['stop_id'].unique()))
-    last_stop_states = pd.DataFrame(index=last_stop_states.keys(), data=last_stop_states.values())
-    last_stop_evaluated = pd.merge(last_stop_evaluated, last_stop_states, left_on='stop_id', right_index=True, how='left')
+    last_stop_evaluated = potential_trips.loc[
+        potential_trips.groupby("trip_id")["arrival_time"].idxmax()
+    ]
+    last_stop_states = stops_state.get_stops(
+        list(last_stop_evaluated["stop_id"].unique())
+    )
+    last_stop_states = pd.DataFrame(
+        index=last_stop_states.keys(), data=last_stop_states.values()
+    )
+    last_stop_evaluated = pd.merge(
+        last_stop_evaluated,
+        last_stop_states,
+        left_on="stop_id",
+        right_index=True,
+        how="left",
+    )
 
-    last_stop_evaluated = pd.merge(stop_times, last_stop_evaluated, on='trip_id', suffixes=['', '_preceding'])
+    last_stop_evaluated = pd.merge(
+        stop_times, last_stop_evaluated, on="trip_id", suffixes=["", "_preceding"]
+    )
     # Only want to consider what happens after the stop in question
-    filter1 = last_stop_evaluated['stop_sequence'] >= last_stop_evaluated['stop_sequence_preceding']
+    filter1 = (
+        last_stop_evaluated["stop_sequence"]
+        >= last_stop_evaluated["stop_sequence_preceding"]
+    )
     # A traveler can only use trips that leave after they arrive at the station
-    filter2 = last_stop_evaluated['departure_time_preceding'] >= last_stop_evaluated['time_to_reach'] + departure_time
+    filter2 = (
+        last_stop_evaluated["departure_time_preceding"]
+        >= last_stop_evaluated["time_to_reach"] + departure_time
+    )
 
     last_stop_evaluated = last_stop_evaluated[filter1 & filter2].copy()
 
+    last_stop_evaluated["arrive_time_adjusted"] = (
+        last_stop_evaluated["arrival_time"] - departure_time
+    )  # + last_stop_evaluated['time_to_reach']
 
-    last_stop_evaluated['arrive_time_adjusted'] = last_stop_evaluated['arrival_time'] - departure_time #+ last_stop_evaluated['time_to_reach']
+    # routes_evaluated = trips[trips['trip_id'].isin(last_stop_evaluated['trip_id'].unique())]
+    # logger.debug('Routes Evaluated: {}'.format(routes_evaluated['route_id'].unique()))
 
-    #routes_evaluated = trips[trips['trip_id'].isin(last_stop_evaluated['trip_id'].unique())]
-    #logger.debug('Routes Evaluated: {}'.format(routes_evaluated['route_id'].unique()))
-
-    for arrive_stop_id, arrive_time_adjusted, trip_id, preceding_stop, preceding_path in \
-        last_stop_evaluated[['stop_id', 'arrive_time_adjusted', 'trip_id', 'stop_id_preceding', 'preceding']].itertuples(index=False, name=None):
+    for (
+        arrive_stop_id,
+        arrive_time_adjusted,
+        trip_id,
+        preceding_stop,
+        preceding_path,
+    ) in last_stop_evaluated[
+        ["stop_id", "arrive_time_adjusted", "trip_id", "stop_id_preceding", "preceding"]
+    ].itertuples(
+        index=False, name=None
+    ):
 
         stops_state.try_add_update(
             arrive_stop_id,
@@ -218,19 +287,24 @@ def _stop_times_for_kth_trip(
             trip_id,
             preceding_stop,
             preceding_path,
-            k*2
+            k * 2,
         )
 
     toc = time.perf_counter()
-    logger.debug("\t\t'Iterate' New Trip Pairings calculated in {:0.4f} seconds".format(toc - tic))
+    logger.debug(
+        "\t\t'Iterate' New Trip Pairings calculated in {:0.4f} seconds".format(
+            toc - tic
+        )
+    )
 
     return True
 
+
 def _add_footpath_transfers(
-        stops_state: StopAccessState,
-        transfers: pd.DataFrame,
-        already_processed_stops: List[str],
-        k,
+    stops_state: StopAccessState,
+    transfers: pd.DataFrame,
+    already_processed_stops: List[str],
+    k,
 ) -> List[str]:
     # initialize a return object
     updated_stop_ids = []
@@ -238,40 +312,56 @@ def _add_footpath_transfers(
     # add in transfers to nearby stops
     stop_ids = stops_state.all_stops()
 
-    stop_xfers = transfers[(transfers['from_stop_id'].isin(stop_ids)) &
-                           (~transfers['from_stop_id'].isin(already_processed_stops))].copy()
+    stop_xfers = transfers[
+        (transfers["from_stop_id"].isin(stop_ids))
+        & (~transfers["from_stop_id"].isin(already_processed_stops))
+    ].copy()
 
     # No transfer from the stops
     if stop_xfers.empty:
         return updated_stop_ids
 
-    ref_stop_state = [{'from_stop_id': stop_id, 'time_to_reach': vals['time_to_reach'], 'preceding': vals['preceding']}
-                      for stop_id, vals in stops_state._stops.items()]
+    ref_stop_state = [
+        {
+            "from_stop_id": stop_id,
+            "time_to_reach": vals["time_to_reach"],
+            "preceding": vals["preceding"],
+        }
+        for stop_id, vals in stops_state._stops.items()
+    ]
 
     ref_stop_state = pd.DataFrame(ref_stop_state)
 
-    stop_xfers = pd.merge(stop_xfers, ref_stop_state, on='from_stop_id', how='left')
+    stop_xfers = pd.merge(stop_xfers, ref_stop_state, on="from_stop_id", how="left")
 
-    stop_xfers['arrive_time_adjusted'] = stop_xfers['time_to_reach'] + stop_xfers['min_transfer_time']
-    stop_xfers = stop_xfers.loc[stop_xfers.groupby('to_stop_id')['arrive_time_adjusted'].idxmin()]
-    stop_xfers['last_trip_id'] = stop_xfers.apply(lambda x: x['preceding'][-1] if len(x['preceding']) else '', axis=1)
+    stop_xfers["arrive_time_adjusted"] = (
+        stop_xfers["time_to_reach"] + stop_xfers["min_transfer_time"]
+    )
+    stop_xfers = stop_xfers.loc[
+        stop_xfers.groupby("to_stop_id")["arrive_time_adjusted"].idxmin()
+    ]
+    stop_xfers["last_trip_id"] = stop_xfers.apply(
+        lambda x: x["preceding"][-1] if len(x["preceding"]) else "", axis=1
+    )
 
     for i, row in stop_xfers.iterrows():
         did_update = stops_state.try_add_update(
-            row['to_stop_id'],
-            row['arrive_time_adjusted'],
-            row['last_trip_id'],
-            preceding_stop=row['from_stop_id'],
-            k=k * 2 + 1
+            row["to_stop_id"],
+            row["arrive_time_adjusted"],
+            row["last_trip_id"],
+            preceding_stop=row["from_stop_id"],
+            k=k * 2 + 1,
         )
 
         if did_update:
-            updated_stop_ids.append(row['to_stop_id'])
+            updated_stop_ids.append(row["to_stop_id"])
 
     return updated_stop_ids
 
 
-def raptor_assignment(stop_times, from_stop_id, to_stop_id, departure_time, transfers, transfer_limit) -> StopAccessState:
+def raptor_assignment(
+    stop_times, from_stop_id, to_stop_id, departure_time, transfers, transfer_limit
+) -> StopAccessState:
     stop_state = StopAccessState(from_stop_id)
 
     already_processed_xfers = []
@@ -285,7 +375,9 @@ def raptor_assignment(stop_times, from_stop_id, to_stop_id, departure_time, tran
 
         # update time to stops calculated based on stops accessible
         tic = time.perf_counter()
-        _stop_times_for_kth_trip(stop_state, just_updated_stops, stop_times, departure_time, k)
+        _stop_times_for_kth_trip(
+            stop_state, just_updated_stops, stop_times, departure_time, k
+        )
         toc = time.perf_counter()
         logger.debug("\tstop times calculated in {:0.4f} seconds".format(toc - tic))
 
@@ -293,8 +385,11 @@ def raptor_assignment(stop_times, from_stop_id, to_stop_id, departure_time, tran
         logger.debug("\t\t{} stop ids added".format(added_keys_count))
 
         if added_keys_count == 0:
-            logger.info('No valid transfers found after iteration {} for stop pair {}->{}'.format(k, from_stop_id,
-                                                                                                  to_stop_id))
+            logger.info(
+                "No valid transfers found after iteration {} for stop pair {}->{}".format(
+                    k, from_stop_id, to_stop_id
+                )
+            )
             break
 
         # reset stop_ids count
@@ -303,24 +398,31 @@ def raptor_assignment(stop_times, from_stop_id, to_stop_id, departure_time, tran
         # now add footpath transfers and update
         tic = time.perf_counter()
         just_updated_stops_temp = just_updated_stops
-        just_updated_stops = _add_footpath_transfers(stop_state, transfers, already_processed_xfers, k)
+        just_updated_stops = _add_footpath_transfers(
+            stop_state, transfers, already_processed_xfers, k
+        )
         toc = time.perf_counter()
-        logger.debug("\tfootpath transfers calculated in {:0.4f} seconds".format(toc - tic))
+        logger.debug(
+            "\tfootpath transfers calculated in {:0.4f} seconds".format(toc - tic)
+        )
 
         added_keys_count = len(stop_state.all_stops()) - len(stop_ids)
         logger.debug("\t\t{} stop ids added".format(added_keys_count))
 
-        logger.debug("\talready processed count increased from {} to {}".format(
-            len(already_processed_xfers),
-            len(already_processed_xfers + just_updated_stops_temp),
-        ))
+        logger.debug(
+            "\talready processed count increased from {} to {}".format(
+                len(already_processed_xfers),
+                len(already_processed_xfers + just_updated_stops_temp),
+            )
+        )
         logger.debug("\tnew stops to process: {}".format(len(just_updated_stops)))
         already_processed_xfers += just_updated_stops_temp
 
-
     if not stop_state.has_stop(to_stop_id):
-        logger.warning("Unable to find route to destination ({}->{}) within transfer limit".format(from_stop_id, to_stop_id))
+        logger.warning(
+            "Unable to find route to destination ({}->{}) within transfer limit".format(
+                from_stop_id, to_stop_id
+            )
+        )
 
     return stop_state
-
-
