@@ -1,10 +1,9 @@
 import logging
 import time
+from typing import List
 
 import pandas as pd
-
 from stop_access import StopAccessState
-from typing import List
 
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
