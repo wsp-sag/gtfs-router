@@ -1,7 +1,11 @@
-This is still very much a work in progress. The Raptor engine works, and it will be improved over the next several days.
-
 # gtfs-router
 Collection of GTFS Pathbuilding Functions
+
+# DISCLAIMER
+This project is still a work in progress. The code has been tested on several GTFS feeds, but WSP USA makes no claims or warrants about the results of the algorithms contained in this repository. USE AT YOUR OWN RISK!
+
+# Examples
+The [examples](examples)  folder contains a sample setup to demonstrate how to use the router along with information about reporting results.
 
 ## Raptor
 The RAPTOR pathbuilder is based on [Round-Based Public Transit Routing](https://www.microsoft.com/en-us/research/wp-content/uploads/2012/01/raptor_alenex.pdf) algorithm developed by Daniel Delling, Thomas Pajor, and Renato F. Werneck at Microsoft Research Silicon Valley.
@@ -10,4 +14,4 @@ The RAPTOR algorithm also builds off of a [Gist](https://gist.github.com/kuanb/a
 
 
 ## WSP Point of Contact
-The WSP points of contact for this software is Clint Daniels (@danielsclint)
+The WSP points of contact for this software is Clint Daniels (@danielsclint).
