@@ -51,10 +51,10 @@ def _find_distances(
     total_rows = len(_trip_types)
 
     for trip_idx, trip_type in _trip_types.iterrows():
-        if logger.level == logging.DEBUG:
-            if counter % 10 == 0:
-                logger.debug("Processing Row {} of {}".format(counter, total_rows))
-                counter = counter + 1
+        if counter % 10 == 0:
+            logger.info("Processing Unique Trip Group {} of {}".format(counter, total_rows))
+
+        counter = counter + 1
 
         line = shapes[shapes["shape_id"] == trip_type["shape_id"]]["geometry"].values[0]
 
