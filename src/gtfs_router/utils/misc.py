@@ -1,7 +1,5 @@
 import logging
 
-import partridge as ptg
-
 logger = logging.getLogger()
 
 
@@ -31,3 +29,23 @@ def log_stop_information(partridge_feed, stop_id):
     ].itertuples(index=False, name=None):
         logger.debug("\tRoute ID: {}:\t{}-{}".format(route_id, short_name, long_name))
     logger.debug("Trips: {}".format(trip_ids))
+
+
+def line_cutter(line, distance):
+    from shapely.geometry import LineString, Point
+
+    # Cuts a line in two at a distance from its starting point
+    if distance <= 0.0 or distance >= line.length:
+        return [LineString(line)]
+    coords = list(line.coords)
+
+    for i, p in enumerate(coords):
+        proj_dist = line.project(Point(p))
+        if proj_dist == distance:
+            return [LineString(coords[: i + 1]), LineString(coords[i:])]
+        if proj_dist > distance:
+            cp = line.interpolate(distance)
+            return [
+                LineString(coords[:i] + [(cp.x, cp.y)]),
+                LineString([(cp.x, cp.y)] + coords[i:]),
+            ]

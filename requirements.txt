@@ -1,5 +1,5 @@
 black
 isort
 partridge
-tox
+pytest
 -e .
