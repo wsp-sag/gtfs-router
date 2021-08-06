@@ -5,7 +5,6 @@ from typing import List, Optional, Union
 import geopandas as gpd
 import pandas as pd
 import pyproj
-
 from shapely.geometry import LineString
 from shapely.ops import transform
 
@@ -95,31 +94,36 @@ class StopAccessState:
 
         return did_update
 
-    def _get_trip_segment(self, prior_stop_mp, current_stop_mp, current_trip_id, epsg=ALBERS_EQUAL_AREA_CONICAL_EPSG):
+    def _get_trip_segment(
+        self,
+        prior_stop_mp,
+        current_stop_mp,
+        current_trip_id,
+        epsg=ALBERS_EQUAL_AREA_CONICAL_EPSG,
+    ):
         stops = self._gtfs_feed.stops
-        #prior_stop = stops[stops['stop_id'] == prior_stop_id].values[0]
-        #current_stop = stops[stops['stop_id'] == current_stop_id].values[0]
+        # prior_stop = stops[stops['stop_id'] == prior_stop_id].values[0]
+        # current_stop = stops[stops['stop_id'] == current_stop_id].values[0]
 
         trips = self._gtfs_feed.trips
-        shape_id = trips[trips['trip_id'] == current_trip_id]['shape_id'].values[0]
+        shape_id = trips[trips["trip_id"] == current_trip_id]["shape_id"].values[0]
 
         shapes = self._gtfs_feed.shapes.to_crs(epsg=epsg)
-        route_shape = shapes[shapes['shape_id'] == shape_id]['geometry'].values[0]
+        route_shape = shapes[shapes["shape_id"] == shape_id]["geometry"].values[0]
 
         line = line_cutter(route_shape, prior_stop_mp)[1]
         line = line_cutter(line, current_stop_mp - prior_stop_mp)[0]
 
-        from_proj = pyproj.CRS('EPSG:5070')
-        to_proj = pyproj.CRS('EPSG:4326')
+        from_proj = pyproj.CRS("EPSG:5070")
+        to_proj = pyproj.CRS("EPSG:4326")
 
-        project = pyproj.Transformer.from_crs(from_proj, to_proj, always_xy=True).transform
+        project = pyproj.Transformer.from_crs(
+            from_proj, to_proj, always_xy=True
+        ).transform
         return transform(project, line)
 
-
     def describe_path(
-        self,
-        to_stop_id: str,
-        epsg: ALBERS_EQUAL_AREA_CONICAL_EPSG
+        self, to_stop_id: str, epsg: ALBERS_EQUAL_AREA_CONICAL_EPSG
     ) -> List[str]:
         stops = self._gtfs_feed.stops
         stop_times = self._gtfs_feed.stop_times
@@ -136,7 +140,6 @@ class StopAccessState:
         to_stop = {}
         mode = {}
         color = {}
-
 
         for x in range(max_segment_num, -1, -1):
             if current_stop["prior_segment"]["segment_num"] != x:
@@ -156,14 +159,13 @@ class StopAccessState:
             from_stop[x] = prior_stop_id
             to_stop[x] = current_stop_id
 
-
             if current_trip_id != "walk transfer":
                 route_id = trips[trips["trip_id"] == current_trip_id]["route_id"]
                 route_color = routes[routes["route_id"].isin(route_id)][
                     "route_color"
                 ].values[0]
 
-                color[x] = '#' + route_color
+                color[x] = "#" + route_color
                 route_name = (
                     routes[routes["route_id"].isin(route_id)][
                         "route_short_name"
@@ -188,11 +190,13 @@ class StopAccessState:
 
                 alight_time = alight_stop_time["arrival_time"].values[0]
 
-                segments[x] = self._get_trip_segment(boarding_stop_time['shape_dist_traveled'].values[0],
-                                                     alight_stop_time['shape_dist_traveled'].values[0], current_trip_id,
-                                                     epsg=epsg
-                                                     )
-                mode[x] = 'transit'
+                segments[x] = self._get_trip_segment(
+                    boarding_stop_time["shape_dist_traveled"].values[0],
+                    alight_stop_time["shape_dist_traveled"].values[0],
+                    current_trip_id,
+                    epsg=epsg,
+                )
+                mode[x] = "transit"
 
                 out_messages[x] = (
                     "Board {route_name} at {prior_stop_name}({prior_stop_id}) at {boarding_time} -> "
@@ -207,8 +211,8 @@ class StopAccessState:
                     )
                 )
             else:  # Walk connection
-                mode[x] = 'walk'
-                color[x] = '#000000'
+                mode[x] = "walk"
+                color[x] = "#000000"
                 current_stop_geom = stops[stops["stop_id"] == current_stop_id][
                     "geometry"
                 ].values[0]
@@ -228,22 +232,26 @@ class StopAccessState:
             current_stop = prior_stop
             current_stop_id = prior_stop_id
 
-        #counter = 1
-        #sorted_messages = {}
-        #sorted_segments = {}
-        #for i in sorted(list(out_messages.keys())):
+        # counter = 1
+        # sorted_messages = {}
+        # sorted_segments = {}
+        # for i in sorted(list(out_messages.keys())):
         #    sorted_messages[counter] = out_messages[i]
         #    if i in segments.keys():
         #        sorted_segments[counter] = segments[i]
         #    counter = counter + 1
-        return gpd.GeoDataFrame(index=segments.keys(), data={
-            'from_stop_id': from_stop.values(),
-            'to_stop_id': to_stop.values(),
-            'desc': out_messages.values(),
-            'mode': mode.values(),
-            'color': color.values()
-        }, geometry=list(segments.values()), crs='epsg:4326'
-                                )
+        return gpd.GeoDataFrame(
+            index=segments.keys(),
+            data={
+                "from_stop_id": from_stop.values(),
+                "to_stop_id": to_stop.values(),
+                "desc": out_messages.values(),
+                "mode": mode.values(),
+                "color": color.values(),
+            },
+            geometry=list(segments.values()),
+            crs="epsg:4326",
+        )
 
         # return sorted_messages, segments
 

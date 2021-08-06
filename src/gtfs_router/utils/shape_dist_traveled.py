@@ -13,7 +13,6 @@ logger.setLevel(logging.INFO)
 logging.debug("Initialize Logger")
 
 
-
 SHAPE_DIST_TRAVELED = "shape_dist_traveled"
 
 
@@ -52,7 +51,9 @@ def _find_distances(
 
     for trip_idx, trip_type in _trip_types.iterrows():
         if counter % 10 == 0:
-            logger.info("Processing Unique Trip Group {} of {}".format(counter, total_rows))
+            logger.info(
+                "Processing Unique Trip Group {} of {}".format(counter, total_rows)
+            )
 
         counter = counter + 1
 
