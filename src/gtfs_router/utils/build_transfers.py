@@ -7,12 +7,11 @@ import numpy as np
 import pandas as pd
 from shapely.geometry import Point
 
+from gtfs_router import ALBERS_EQUAL_AREA_CONICAL_EPSG
+
 OVERWRITE = "overwrite"
 APPEND = "append"
 NO_OVERWRITE = "no overwrite"
-
-# Default Projection used to calculate distances - Best for Continental US
-ALBERS_EQUAL_AREA_CONICAL_EPSG = 5070
 
 # Default buffer distance to search for transfers - If used with
 # default projection, this will be in meters. 150 meters is approximately 500 feet.

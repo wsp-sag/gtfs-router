@@ -9,6 +9,7 @@ import pyproj
 from shapely.geometry import LineString
 from shapely.ops import transform
 
+from gtfs_router import ALBERS_EQUAL_AREA_CONICAL_EPSG
 from gtfs_router.utils import line_cutter
 
 logger = logging.getLogger()
@@ -94,7 +95,7 @@ class StopAccessState:
 
         return did_update
 
-    def _get_trip_segment(self, prior_stop_mp, current_stop_mp, current_trip_id):
+    def _get_trip_segment(self, prior_stop_mp, current_stop_mp, current_trip_id, epsg=ALBERS_EQUAL_AREA_CONICAL_EPSG):
         stops = self._gtfs_feed.stops
         #prior_stop = stops[stops['stop_id'] == prior_stop_id].values[0]
         #current_stop = stops[stops['stop_id'] == current_stop_id].values[0]
@@ -102,7 +103,7 @@ class StopAccessState:
         trips = self._gtfs_feed.trips
         shape_id = trips[trips['trip_id'] == current_trip_id]['shape_id'].values[0]
 
-        shapes = self._gtfs_feed.shapes.to_crs(epsg=5070)
+        shapes = self._gtfs_feed.shapes.to_crs(epsg=epsg)
         route_shape = shapes[shapes['shape_id'] == shape_id]['geometry'].values[0]
 
         line = line_cutter(route_shape, prior_stop_mp)[1]
@@ -118,6 +119,7 @@ class StopAccessState:
     def describe_path(
         self,
         to_stop_id: str,
+        epsg: ALBERS_EQUAL_AREA_CONICAL_EPSG
     ) -> List[str]:
         stops = self._gtfs_feed.stops
         stop_times = self._gtfs_feed.stop_times
@@ -187,7 +189,9 @@ class StopAccessState:
                 alight_time = alight_stop_time["arrival_time"].values[0]
 
                 segments[x] = self._get_trip_segment(boarding_stop_time['shape_dist_traveled'].values[0],
-                                                     alight_stop_time['shape_dist_traveled'].values[0], current_trip_id)
+                                                     alight_stop_time['shape_dist_traveled'].values[0], current_trip_id,
+                                                     epsg=epsg
+                                                     )
                 mode[x] = 'transit'
 
                 out_messages[x] = (

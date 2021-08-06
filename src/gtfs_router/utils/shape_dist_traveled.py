@@ -5,14 +5,14 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 
+from gtfs_router import ALBERS_EQUAL_AREA_CONICAL_EPSG
 from gtfs_router.utils import line_cutter
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logging.debug("Initialize Logger")
 
-# Default Projection used to calculate distances - Best for Continental US
-ALBERS_EQUAL_AREA_CONICAL_EPSG = 5070
+
 
 SHAPE_DIST_TRAVELED = "shape_dist_traveled"
 
