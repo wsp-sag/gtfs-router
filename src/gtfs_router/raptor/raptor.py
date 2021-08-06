@@ -123,7 +123,7 @@ class StopAccessState:
         return transform(project, line)
 
     def describe_path(
-        self, to_stop_id: str, epsg: ALBERS_EQUAL_AREA_CONICAL_EPSG
+        self, to_stop_id: str, epsg: Optional[int] = ALBERS_EQUAL_AREA_CONICAL_EPSG
     ) -> List[str]:
         stops = self._gtfs_feed.stops
         stop_times = self._gtfs_feed.stop_times
