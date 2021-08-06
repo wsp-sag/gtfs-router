@@ -111,7 +111,7 @@ class StopAccessState:
         shapes = self._gtfs_feed.shapes.to_crs(epsg=epsg)
         route_shape = shapes[shapes["shape_id"] == shape_id]["geometry"].values[0]
 
-        line = line_cutter(route_shape, prior_stop_mp)[1]
+        line = line_cutter(route_shape, prior_stop_mp)[-1]
         line = line_cutter(line, current_stop_mp - prior_stop_mp)[0]
 
         from_proj = pyproj.CRS("EPSG:5070")
@@ -142,7 +142,7 @@ class StopAccessState:
         color = {}
 
         for x in range(max_segment_num, -1, -1):
-            if current_stop["prior_segment"]["segment_num"] != x:
+            if "prior_segment" not in current_stop or current_stop["prior_segment"]["segment_num"] != x:
                 continue
 
             prior_stop_id = current_stop["prior_segment"]["from_stop_id"]
