@@ -137,7 +137,13 @@ class StopAccessState:
         out_messages = {}
         segments = {}
         from_stop = {}
+        from_name = {}
+        from_stop_lat = {}
+        from_stop_lon = {}
         to_stop = {}
+        to_name = {}
+        to_stop_lat = {}
+        to_stop_lon = {}
         mode = {}
         color = {}
 
@@ -147,17 +153,25 @@ class StopAccessState:
 
             prior_stop_id = current_stop["prior_segment"]["from_stop_id"]
             prior_stop = self.get_stop(prior_stop_id)
-            current_stop_name = stops[stops["stop_id"] == current_stop_id][
-                "stop_name"
-            ].values[0]
-            prior_stop_name = stops[stops["stop_id"] == prior_stop_id][
-                "stop_name"
-            ].values[0]
+
+            current_stop_row = stops[stops["stop_id"] == current_stop_id].iloc[0].squeeze()
+            prior_stop_row = stops[stops["stop_id"] == prior_stop_id].iloc[0].squeeze()
+
+            current_stop_name = current_stop_row["stop_name"]
+            prior_stop_name = prior_stop_row["stop_name"]
 
             current_trip_id = current_stop["prior_segment"]["trip_id"]
 
             from_stop[x] = prior_stop_id
             to_stop[x] = current_stop_id
+
+            from_name[x] = prior_stop_name
+            from_stop_lat[x] = prior_stop_row['geometry'].y
+            from_stop_lon[x] = prior_stop_row['geometry'].x
+
+            to_name[x] = current_stop_name
+            to_stop_lat[x] = current_stop_row['geometry'].y
+            to_stop_lon[x] = current_stop_row['geometry'].x
 
             if current_trip_id != "walk transfer":
                 route_id = trips[trips["trip_id"] == current_trip_id]["route_id"]
@@ -183,12 +197,15 @@ class StopAccessState:
 
                 boarding_time = boarding_stop_time["departure_time"].values[0]
 
+
                 alight_stop_time = stop_times[
                     (stop_times["trip_id"] == current_trip_id)
                     & (stop_times["stop_id"] == current_stop_id)
                 ]
 
                 alight_time = alight_stop_time["arrival_time"].values[0]
+
+
 
                 segments[x] = self._get_trip_segment(
                     boarding_stop_time["shape_dist_traveled"].values[0],
@@ -245,6 +262,12 @@ class StopAccessState:
             data={
                 "from_stop_id": from_stop.values(),
                 "to_stop_id": to_stop.values(),
+                "from_stop_name": from_name.values(),
+                "to_stop_name": to_name.values(),
+                "from_stop_lat": from_stop_lat.values(),
+                "from_stop_lon": from_stop_lon.values(),
+                "to_stop_lat": to_stop_lat.values(),
+                "to_stop_lon": to_stop_lon.values(),
                 "desc": out_messages.values(),
                 "mode": mode.values(),
                 "color": color.values(),
