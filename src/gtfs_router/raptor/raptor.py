@@ -216,8 +216,8 @@ class StopAccessState:
                 mode[x] = "transit"
 
                 out_messages[x] = (
-                    "Board {route_name} at {prior_stop_name}({prior_stop_id}) at {boarding_time} -> "
-                    "Alight at {current_stop_name}({current_stop_id}) at {alight_time}".format(
+                    "Board Route {route_name} at {prior_stop_name}({prior_stop_id}) at {boarding_time} -> "
+                    "Arrive at {current_stop_name}({current_stop_id}) at {alight_time}".format(
                         route_name=route_name,
                         prior_stop_name=prior_stop_name,
                         prior_stop_id=prior_stop_id,
@@ -268,8 +268,8 @@ class StopAccessState:
                 "from_stop_lon": from_stop_lon.values(),
                 "to_stop_lat": to_stop_lat.values(),
                 "to_stop_lon": to_stop_lon.values(),
-                "desc": out_messages.values(),
-                "mode": mode.values(),
+                "description": out_messages.values(),
+                "transit_mode": mode.values(),
                 "color": color.values(),
             },
             geometry=list(segments.values()),
